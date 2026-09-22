@@ -225,6 +225,7 @@
   .lr.mine .a::after{content:'из приложения'; margin-left:6px; font-size:11px; color:var(--good)}
   .logtools{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap}
   .store{font-size:12px; color:var(--ink-3)}
+  .logtools .tools{display:flex; gap:8px; flex-wrap:wrap}
 </style>
 
 <div class="wrap">
@@ -346,8 +347,12 @@
       <section id="p-log" role="tabpanel" aria-labelledby="t-log" hidden>
         <div class="logtools">
           <span class="store" id="storeNote">—</span>
-          <button class="btn ghost" id="undo" type="button">Отменить последнюю запись</button>
+          <span class="tools">
+            <button class="btn ghost" id="exportCsv" type="button" title="Записи приложения для переноса в «ЛогВремени»">Выгрузить CSV</button>
+            <button class="btn ghost" id="undo" type="button">Отменить последнюю запись</button>
+          </span>
         </div>
+        <div class="msg" id="exportMsg" role="status"></div>
         <div class="log" id="logList"></div>
       </section>
     </div>
@@ -840,6 +845,45 @@ function renderLog(list) {
     '<span class="h">' + (e.live ? 'идёт' : f1(e.h)) + '</span></div>').join('');
   $('storeNote').textContent = Store.label();
   $('undo').disabled = !Store.entries().length;
+  $('exportCsv').disabled = !Store.entries().length;
+}
+
+/* ═══════════ Выгрузка для «ЛогВремени» ═══════════
+   Цепочка начал → строки с началом и концом. Первой идёт открытое действие из Excel:
+   первая запись приложения его закрывает. Последнее действие — без конца (ещё идёт).
+   Слияние с Excel — scripts/merge_log.py, повторная выгрузка безопасна. */
+const dmyhm = (ts) => { const d = L(ts); return pad(d.getUTCDate()) + '.' + pad(d.getUTCMonth() + 1) + '.' +
+                        d.getUTCFullYear() + ' ' + hhmm(ts); };
+function exportRows() {
+  const chain = Store.entries().map(e => ({t: e.t, act: e.act, sphere: e.sphere}));
+  if (DATA.open && chain.length && DATA.open.t < chain[0].t) chain.unshift({...DATA.open});
+  return chain.map((c, i) => ({...c, end: chain[i + 1] ? chain[i + 1].t : null}));
+}
+function exportCsv() {
+  const q = (v) => /[;"\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const lines = [['Акт', 'Сфера', 'Начало', 'Конец', 'Часы', 'Тип'].join(';')];
+  exportRows().forEach(r => lines.push([q(r.act), q(r.sphere), dmyhm(r.t), r.end ? dmyhm(r.end) : '',
+    r.end ? ((r.end - r.t) / H).toFixed(2).replace('.', ',') : '', 'основной'].join(';')));
+  return '\uFEFF' + lines.join('\r\n') + '\r\n';          // BOM — чтобы Excel открыл кириллицу
+}
+async function saveCsv() {
+  const data = exportCsv(), d = L(nowTs());
+  const filename = 'garmonizatsiya_' + d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + '.csv';
+  const say = (t) => { $('exportMsg').textContent = t; };
+  let dl = null;
+  try { dl = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
+  if (dl) {
+    try { await dl.save({filename, data}); say('Файл отдан на сохранение: ' + filename); }
+    catch (e) { say(e && e.code === 'declined' ? 'Сохранение отменено.' : 'Не удалось сохранить файл.'); }
+    return;
+  }
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([data], {type: 'text/csv;charset=utf-8'}));
+    a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    say('Скачан ' + filename);
+  } catch (e) { say('Браузер не дал скачать файл.'); }
 }
 
 /* ═══════════ Взаимодействие ═══════════ */
@@ -868,6 +912,7 @@ $('fAdd').addEventListener('click', () => {
   $('fAct').value = ''; speed = 'now'; viewDay = null; setTimeNow(); paint();
 });
 $('fAct').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('fAdd').click(); });
+$('exportCsv').addEventListener('click', saveCsv);
 $('undo').addEventListener('click', () => { Store.removeLast(); viewDay = null; paint(); });
 
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(paint, 120); });
@@ -876,7 +921,7 @@ setInterval(() => { if (speed === 'now' && document.visibilityState !== 'hidden'
 /* ═══════════ Старт ═══════════ */
 const allSpheres = [...new Set(SN.concat(Object.values(DATA.actSphere)))].sort((a, b) => a.localeCompare(b, 'ru'));
 $('fSphere').innerHTML = allSpheres.map(s => '<option>' + esc(s) + '</option>').join('');
-$('fSphere').value = 'Бизнес';
+$('fSphere').value = allSpheres.includes('Бизнес') ? 'Бизнес' : allSpheres[0];
 $('actList').innerHTML = Object.keys(DATA.actSphere).map(a => '<option value="' + esc(a) + '">').join('');
 setTimeNow();
 paint();
