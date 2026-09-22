@@ -1,0 +1,884 @@
+<title>Гармонизация</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<style>
+  /* Единый тёмный мир игрового интерфейса — намеренно одна тема */
+  :root{
+    --page:#081723;
+    --scene:#0C2233;
+    --glass-top:#1C4A69;
+    --glass-bot:#10304A;
+    --rim:#3D7FA3;
+    --rim-hot:#5BC8EE;
+    --ink:#E6F2FA;
+    --ink-2:#A9C6DA;
+    --ink-3:#6F97B2;
+    --grid:#1A3850;
+    --axis:#2B4E68;
+    --track:#081B28;
+    --good:#3FD66E;
+    --warn:#F2C037;
+    --serious:#EE8A4E;
+    --crit:#E5484D;
+    --gold:#F2C64B;
+    --platinum:#DCEBF7;
+    --display:'Fredoka', ui-rounded, 'Nunito', system-ui, sans-serif;
+    --body:'Nunito Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100%;
+    background:
+      radial-gradient(1200px 520px at 50% -180px, #17415E 0%, transparent 70%),
+      var(--page);
+    color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1220px; margin:0 auto; padding-inline:16px; padding-block:16px 40px;
+        display:grid; gap:16px}
+  button{font:inherit}
+  :focus-visible{outline:2px solid var(--rim-hot); outline-offset:2px}
+
+  /* Стекло: панели в духе игрового HUD */
+  .glass{
+    position:relative; border-radius:22px;
+    background:linear-gradient(180deg,var(--glass-top),var(--glass-bot));
+    border:1px solid var(--rim);
+    box-shadow:0 12px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14);
+  }
+  .glass::before{
+    content:''; position:absolute; inset:1px 1px auto 1px; height:44%;
+    border-radius:21px 21px 60% 60% / 21px 21px 26px 26px;
+    background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,0));
+    pointer-events:none;
+  }
+  .glass > *{position:relative}
+  .scene{background:var(--scene); border:1px solid var(--axis); border-radius:18px; padding:14px 16px 12px}
+  .label{font-family:var(--display); font-weight:500; font-size:12px; letter-spacing:.08em;
+         text-transform:uppercase; color:var(--ink-3)}
+  h2{font-family:var(--display); font-weight:600; font-size:16px; margin:0; text-wrap:balance}
+
+  /* ── Верхняя полоса: очередь действий и часы ── */
+  .topbar{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:16px; align-items:stretch}
+  @media (max-width:760px){.topbar{grid-template-columns:1fr}}
+  .queue{padding:12px 14px; display:grid; grid-template-columns:minmax(220px,300px) minmax(0,1fr); gap:14px; align-items:center}
+  @media (max-width:980px){.queue{grid-template-columns:1fr}}
+  .nowtile{display:flex; gap:12px; align-items:center; min-width:0}
+  .bubble{flex:0 0 auto; width:50px; height:50px; border-radius:50%; display:grid; place-items:center;
+          background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.35), transparent 55%), var(--c, var(--rim));
+          border:2px solid rgba(255,255,255,.55); box-shadow:0 3px 10px rgba(0,0,0,.4)}
+  .bubble svg{width:24px; height:24px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+  .nowtxt{min-width:0}
+  .nowact{font-family:var(--display); font-weight:600; font-size:18px; line-height:1.15;
+          overflow-wrap:anywhere}
+  .nowmeta{font-size:12.5px; color:var(--ink-2); font-variant-numeric:tabular-nums}
+  .next{display:grid; grid-template-columns:112px minmax(0,1fr) 150px auto; gap:8px}
+  @media (max-width:560px){.next{grid-template-columns:112px minmax(0,1fr)}}
+  input,select{font:inherit; font-size:14px; color:var(--ink); background:var(--track);
+               border:1px solid var(--rim); border-radius:12px; padding:9px 11px; min-width:0}
+  input::placeholder{color:var(--ink-3)}
+  .btn{font-family:var(--display); font-weight:600; font-size:14px; color:#062232;
+       background:linear-gradient(180deg,#8FE0FA,#3DB3E0); border:1px solid #9BE6FF;
+       border-radius:12px; padding:9px 18px; cursor:pointer; white-space:nowrap;
+       box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 2px 6px rgba(0,0,0,.3)}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.ghost{background:transparent; color:var(--ink-2); border-color:var(--rim); box-shadow:none}
+  .btn.ghost:hover{color:var(--ink)}
+  .btn[disabled]{opacity:.45; cursor:default; filter:none}
+  .msg{grid-column:1/-1; font-size:12.5px; color:var(--serious); min-height:0}
+  .msg:empty{display:none}
+
+  .clock{padding:12px 16px; display:flex; gap:14px; align-items:center; justify-content:space-between}
+  .clocktxt{text-align:right}
+  .clockday{font-size:12.5px; color:var(--ink-2)}
+  .clocktime{font-family:var(--display); font-weight:600; font-size:26px; line-height:1}
+  .speed{display:flex; gap:8px}
+  .round{width:42px; height:42px; border-radius:50%; cursor:pointer; display:grid; place-items:center;
+         background:radial-gradient(circle at 35% 28%, rgba(255,255,255,.3), transparent 55%), #1E5476;
+         border:2px solid var(--rim); color:var(--ink-2)}
+  .round svg{width:16px; height:16px; fill:currentColor}
+  .round[aria-pressed="true"]{background:radial-gradient(circle at 35% 28%, rgba(255,255,255,.45), transparent 55%), #2EA7D8;
+                              border-color:#9BE6FF; color:#062232}
+
+  /* ── Сцена: график настроения и лента дня ── */
+  .scenerow{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:16px}
+  @media (max-width:900px){.scenerow{grid-template-columns:1fr}}
+  .scenehead{display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:6px; flex-wrap:wrap}
+  .chartbox{position:relative}
+  .chartbox svg{display:block; width:100%}
+  .chartbox svg text{font-family:var(--body); font-size:11px; fill:var(--ink-3); font-variant-numeric:tabular-nums}
+  .tip{position:absolute; pointer-events:none; background:#051420; border:1px solid var(--rim);
+       border-radius:10px; padding:6px 9px; font-size:12.5px; white-space:nowrap; z-index:5;
+       box-shadow:0 6px 18px rgba(0,0,0,.5)}
+  .tip b{font-weight:700}
+  .tip .s{color:var(--ink-2)}
+  details.tbl{margin-top:6px; font-size:12.5px; color:var(--ink-2)}
+  details.tbl summary{cursor:pointer; color:var(--ink-3)}
+  details.tbl table{border-collapse:collapse; margin-top:6px; width:100%}
+  details.tbl td,details.tbl th{padding:3px 8px 3px 0; text-align:left; font-variant-numeric:tabular-nums; font-weight:400}
+  details.tbl th{color:var(--ink-3)}
+  .daynav{display:flex; align-items:center; gap:6px}
+  .daynav button{width:28px; height:28px; border-radius:50%; border:1px solid var(--rim);
+                 background:transparent; color:var(--ink-2); cursor:pointer; line-height:1}
+  .daynav button[disabled]{opacity:.35; cursor:default}
+  .daynav span{font-size:13px; color:var(--ink-2); min-width:96px; text-align:center; font-variant-numeric:tabular-nums}
+  .legend{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:4px 12px; margin-top:8px}
+  .lg{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-2)}
+  .lg i{width:10px; height:10px; border-radius:3px; flex:0 0 auto}
+  .lg .h{margin-left:auto; font-variant-numeric:tabular-nums; color:var(--ink)}
+  .lg.zero{opacity:.45}
+
+  /* ── Нижняя панель HUD ── */
+  .hud{display:grid; grid-template-columns:230px minmax(0,1fr) minmax(0,1.3fr); gap:0; padding:0; overflow:hidden}
+  @media (max-width:1080px){.hud{grid-template-columns:230px minmax(0,1fr)}.hud .zone.tabs{grid-column:1/-1; border-left:0; border-top:1px solid rgba(91,200,238,.22)}}
+  @media (max-width:640px){.hud{grid-template-columns:1fr}.hud .zone + .zone{border-left:0; border-top:1px solid rgba(91,200,238,.22)}}
+  .zone{padding:16px 18px}
+  .zone + .zone{border-left:1px solid rgba(91,200,238,.22)}
+
+  .portrait{display:flex; gap:14px; align-items:stretch}
+  .tubecol{display:flex; flex-direction:column; align-items:center; gap:6px; flex:0 0 auto}
+  .tubecol .v{font-family:var(--display); font-weight:600; font-size:14px}
+  .tubecol .k{font-size:10.5px; color:var(--ink-3); text-align:center; line-height:1.15}
+  .tube{width:18px; border-radius:9px; background:var(--track); border:1px solid var(--rim);
+        position:relative; overflow:hidden; flex:1 1 auto; min-height:160px}
+  .tube i{position:absolute; left:0; right:0; bottom:0; border-radius:8px;
+          background:linear-gradient(0deg,#E5484D 0%,#F2C037 40%,#3FD66E 70%,#F2C64B 88%,#DCEBF7 100%);
+          background-size:100% 190px; background-position:bottom; transition:height .6s ease}
+  .face{flex:1; text-align:center; min-width:0}
+  .crystalsvg{width:52px; height:70px; display:block; margin:0 auto -4px}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  .crystal{animation:bob 3.2s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){.crystal{animation:none}}
+  .plate{width:96px; height:96px; margin:0 auto; border-radius:26px; overflow:hidden;
+         background:radial-gradient(circle at 50% 30%, #3D7FA3 0%, #1B4460 70%);
+         border:2px solid rgba(255,255,255,.35); box-shadow:inset 0 -12px 24px rgba(0,0,0,.35)}
+  .plate svg{width:100%; height:100%}
+  .moodnum{font-family:var(--display); font-weight:600; font-size:40px; line-height:1; margin-top:10px}
+  .moodword{font-size:13.5px; color:var(--ink-2)}
+  .moodpen{font-size:12px; color:var(--ink-3); margin-top:2px}
+
+  .wf h2{display:flex; justify-content:space-between; gap:8px; align-items:baseline}
+  .wf h2 small{font-family:var(--body); font-weight:400; font-size:12.5px; color:var(--ink-2); font-variant-numeric:tabular-nums}
+  .slots{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:8px 0 14px}
+  .slots.f{grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:0}
+  @media (max-width:420px){.slots{grid-template-columns:repeat(2,minmax(0,1fr))}.slots.f{grid-template-columns:1fr}}
+  .slot{position:relative; min-height:78px; border-radius:14px; padding:9px 9px 8px;
+        background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02)), var(--track);
+        border:2px solid var(--rim); display:flex; flex-direction:column; gap:4px; font-size:12.5px}
+  .slot.want{border-color:#2F9E5C}
+  .slot.want.done{border-color:var(--good); background:linear-gradient(180deg,rgba(63,214,110,.28),rgba(63,214,110,.08)), var(--track)}
+  .slot.fear{border-color:#8A3A3E}
+  .slot.fear.fired{border-color:var(--crit); background:linear-gradient(180deg,rgba(229,72,77,.3),rgba(229,72,77,.08)), var(--track)}
+  .slot .t{flex:1; overflow-wrap:anywhere; line-height:1.3}
+  .slot.want .t{padding-right:18px}
+  .slot .row{display:flex; align-items:center; justify-content:space-between; gap:6px}
+  .slot .p{font-family:var(--display); font-weight:600; font-size:14px}
+  .slot .s{color:var(--ink-2); font-size:11.5px; font-variant-numeric:tabular-nums}
+  .slot input[type=checkbox]{width:18px; height:18px; accent-color:var(--good); cursor:pointer; margin:0}
+  .slot .x{position:absolute; top:4px; right:5px; width:22px; height:22px; border:0; border-radius:50%;
+           background:transparent; color:var(--ink-3); cursor:pointer; font-size:15px; line-height:1}
+  .slot .x:hover{color:var(--ink); background:rgba(255,255,255,.08)}
+  .slot.empty{border-style:dashed; border-color:var(--axis); align-items:center; justify-content:center;
+              color:var(--ink-3); cursor:pointer; background:transparent}
+  .slot.empty:hover{color:var(--ink); border-color:var(--rim)}
+  .slot.edit{border-color:var(--rim-hot)}
+  .slot.edit input,.slot.edit select{padding:5px 7px; font-size:12.5px; border-radius:8px}
+  .slot.edit .row button{padding:4px 10px; font-size:12.5px; border-radius:8px}
+
+  .tabbar{display:flex; gap:4px; background:var(--track); border:1px solid var(--rim); border-radius:999px;
+          padding:4px; margin-bottom:14px; overflow-x:auto}
+  .tabbar button{flex:1 0 auto; font-family:var(--display); font-weight:500; font-size:14px; color:var(--ink-2);
+                 background:transparent; border:0; border-radius:999px; padding:7px 14px; cursor:pointer; white-space:nowrap}
+  .tabbar button[aria-selected="true"]{background:linear-gradient(180deg,#8FE0FA,#3DB3E0); color:#062232; font-weight:600}
+
+  .needs{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 18px}
+  @media (max-width:460px){.needs{grid-template-columns:1fr}}
+  .need .top{display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:4px}
+  .need .top span:last-child{color:var(--ink-3); font-size:12px; font-variant-numeric:tabular-nums}
+  .need.crit .top span:first-child{color:#FF8A8D; font-weight:600}
+  .gbar{height:16px; border-radius:8px; background:var(--track); border:1px solid rgba(91,200,238,.3); overflow:hidden}
+  .gbar i{display:block; height:100%; border-radius:7px; transition:width .5s ease;
+          background-image:linear-gradient(180deg,rgba(255,255,255,.4) 0%,rgba(255,255,255,.08) 50%,rgba(0,0,0,.12) 100%)}
+  .foot{font-size:12.5px; color:var(--ink-3); margin-top:14px; padding-top:10px; border-top:1px solid rgba(91,200,238,.16)}
+
+  .skill{display:grid; grid-template-columns:140px 26px minmax(0,1fr); gap:10px; align-items:center; padding:6px 0}
+  .skill .m{grid-column:3; font-size:11.5px; color:var(--ink-3); margin-top:-4px; font-variant-numeric:tabular-nums}
+  @media (max-width:460px){.skill{grid-template-columns:1fr 26px}.skill .notch,.skill .m{grid-column:1/-1}}
+  .skill .n{font-size:13.5px}
+  .skill .lv{font-family:var(--display); font-weight:600; font-size:17px; text-align:center}
+  .notch{display:grid; grid-template-columns:repeat(10,1fr); gap:3px; height:14px}
+  .notch span{background:var(--track); border:1px solid rgba(91,200,238,.28); border-radius:4px}
+  .notch span.on{background:linear-gradient(180deg,#9BEFFF,#3DB3E0); border-color:#9BEFFF}
+  .notch span.part{background:linear-gradient(90deg,#3DB3E0 var(--p),var(--track) var(--p))}
+
+  .log{display:grid; gap:1px; background:rgba(91,200,238,.14); border-radius:12px; overflow:hidden; max-height:340px; overflow-y:auto}
+  .lr{display:grid; grid-template-columns:12px 84px minmax(0,1fr) 44px; gap:9px; background:var(--glass-bot);
+      padding:7px 11px; font-size:13px; align-items:center}
+  .lr i{width:10px; height:10px; border-radius:3px}
+  .lr .tm{color:var(--ink-3); font-variant-numeric:tabular-nums}
+  .lr .a{overflow-wrap:anywhere}
+  .lr .a small{color:var(--ink-3); margin-left:6px}
+  .lr .h{text-align:right; color:var(--ink-2); font-variant-numeric:tabular-nums}
+  .lr.live{background:#15405C}
+  .lr.mine .a::after{content:'из приложения'; margin-left:6px; font-size:11px; color:var(--good)}
+  .logtools{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap}
+  .store{font-size:12px; color:var(--ink-3)}
+</style>
+
+<div class="wrap">
+
+  <!-- Очередь действий и часы -->
+  <div class="topbar">
+    <div class="glass queue">
+      <div class="nowtile">
+        <div class="bubble" id="nowBubble"><svg viewBox="0 0 24 24" id="nowIcon"></svg></div>
+        <div class="nowtxt">
+          <div class="label">Сейчас</div>
+          <div class="nowact" id="nowAct">—</div>
+          <div class="nowmeta" id="nowMeta">—</div>
+        </div>
+      </div>
+      <div class="next">
+        <input id="fTime" type="time" aria-label="Время начала">
+        <input id="fAct" type="text" placeholder="Что дальше?" aria-label="Следующее действие" list="actList" autocomplete="off">
+        <datalist id="actList"></datalist>
+        <select id="fSphere" aria-label="Сфера"></select>
+        <button class="btn" id="fAdd" type="button">Начать</button>
+        <div class="msg" id="formMsg" role="status"></div>
+      </div>
+    </div>
+    <div class="glass clock">
+      <div class="speed">
+        <button class="round" id="spSnap" type="button" aria-pressed="false" aria-label="Состояние на момент последней записи" title="На момент последней записи">
+          <svg viewBox="0 0 16 16"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>
+        </button>
+        <button class="round" id="spNow" type="button" aria-pressed="true" aria-label="Состояние сейчас" title="Сейчас">
+          <svg viewBox="0 0 16 16"><path d="M4 2.5v11l9.5-5.5z"/></svg>
+        </button>
+      </div>
+      <div class="clocktxt">
+        <div class="clockday" id="clockDay">—</div>
+        <div class="clocktime" id="clockTime">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Сцена -->
+  <div class="scenerow">
+    <div class="scene">
+      <div class="scenehead">
+        <h2>Настроение за 14 дней</h2>
+        <span class="label">на 21:00 каждого дня · сегодня — сейчас</span>
+      </div>
+      <div class="chartbox" id="moodBox">
+        <svg id="moodSvg" height="190" role="img" aria-label="График настроения за 14 дней" tabindex="0"></svg>
+        <div class="tip" id="moodTip" hidden></div>
+      </div>
+      <details class="tbl"><summary>Значения по дням</summary><table id="moodTable"></table></details>
+    </div>
+    <div class="scene">
+      <div class="scenehead">
+        <h2>Лента дня</h2>
+        <div class="daynav">
+          <button type="button" id="dayPrev" aria-label="Предыдущий день">‹</button>
+          <span id="dayLabel">—</span>
+          <button type="button" id="dayNext" aria-label="Следующий день">›</button>
+        </div>
+      </div>
+      <div class="chartbox" id="dayBox">
+        <svg id="daySvg" height="62" role="img" aria-label="Распределение дня по сферам"></svg>
+        <div class="tip" id="dayTip" hidden></div>
+      </div>
+      <div class="legend" id="dayLegend"></div>
+    </div>
+  </div>
+
+  <!-- Нижняя панель -->
+  <div class="glass hud">
+    <div class="zone">
+      <div class="portrait">
+        <div class="tubecol"><div class="tube" title="Очки недели"><i id="tubeFill" style="height:0%"></i></div><div class="v" id="tubeVal">0</div><div class="k">очки<br>недели</div></div>
+        <div class="face">
+          <svg class="crystalsvg" viewBox="0 0 52 70" aria-hidden="true">
+            <g class="crystal">
+              <polygon id="cL"  points="26,4 8,30 26,30"/>
+              <polygon id="cR"  points="26,4 44,30 26,30"/>
+              <polygon id="cBL" points="8,30 26,62 26,30"/>
+              <polygon id="cBR" points="44,30 26,62 26,30"/>
+            </g>
+          </svg>
+          <div class="plate" aria-hidden="true">
+            <svg viewBox="0 0 96 96">
+              <circle cx="48" cy="38" r="17" fill="#CFE6F7" opacity=".85"/>
+              <path d="M14 96c2-20 16-32 34-32s32 12 34 32z" fill="#CFE6F7" opacity=".85"/>
+            </svg>
+          </div>
+          <div class="moodnum" id="moodNum">—</div>
+          <div class="moodword" id="moodWord">—</div>
+          <div class="moodpen" id="moodPen"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="zone wf">
+      <h2>Желания <small id="weekInfo">—</small></h2>
+      <div class="slots" id="wantSlots"></div>
+      <h2>Страхи <small id="fearInfo">—</small></h2>
+      <div class="slots f" id="fearSlots"></div>
+    </div>
+
+    <div class="zone tabs">
+      <div class="tabbar" role="tablist">
+        <button type="button" role="tab" id="t-needs"  aria-selected="true"  aria-controls="p-needs">Нужды</button>
+        <button type="button" role="tab" id="t-skills" aria-selected="false" aria-controls="p-skills">Навыки</button>
+        <button type="button" role="tab" id="t-log"    aria-selected="false" aria-controls="p-log">Журнал</button>
+      </div>
+      <section id="p-needs" role="tabpanel" aria-labelledby="t-needs">
+        <div class="needs" id="needsList"></div>
+        <div class="foot" id="needsFoot"></div>
+      </section>
+      <section id="p-skills" role="tabpanel" aria-labelledby="t-skills" hidden>
+        <div id="skillsList"></div>
+        <div class="foot">База 50 ч, множитель 1,8: каждый уровень стоит примерно столько же, сколько все предыдущие. Прогноз — по темпу за 28 дней.</div>
+      </section>
+      <section id="p-log" role="tabpanel" aria-labelledby="t-log" hidden>
+        <div class="logtools">
+          <span class="store" id="storeNote">—</span>
+          <button class="btn ghost" id="undo" type="button">Отменить последнюю запись</button>
+        </div>
+        <div class="log" id="logList"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════ Данные из лога ═══════════ */
+const DATA = __DATA__;
+const SN = DATA.sphereNames, AN = DATA.actNames;
+
+/* ═══════════ Время: Москва, UTC+3 без перехода на летнее ═══════════ */
+const H = 3600, DAY = 86400, OFF = 3 * H;
+const L   = (ts) => new Date((ts + OFF) * 1000);
+const mk  = (y, m, d, h = 0, mi = 0) => Date.UTC(y, m, d, h, mi) / 1000 - OFF;
+const pad = (n) => String(n).padStart(2, '0');
+const dayStart = (ts) => { const d = L(ts); return mk(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); };
+const hhmm = (ts) => { const d = L(ts); return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()); };
+const ddmm = (ts) => { const d = L(ts); return pad(d.getUTCDate()) + '.' + pad(d.getUTCMonth() + 1); };
+const WD = ['вс','пн','вт','ср','чт','пт','сб'];
+const wd = (ts) => WD[L(ts).getUTCDay()];
+const nowTs = () => Math.floor(Date.now() / 1000);
+const dur = (h) => { const m = Math.round(h * 60); return m < 60 ? m + ' мин' : Math.floor(m / 60) + ' ч ' + pad(m % 60) + ' мин'; };
+const f1 = (x) => x.toFixed(1).replace('.', ',');
+const sgn = (n) => n > 0 ? '+' + n : n < 0 ? '−' + Math.abs(n) : '0';
+
+/* ═══════════ Модель ═══════════ */
+const NEEDS = [
+  {name:'Сон',        sphere:'Сон',           win:24,  norm:8,   w:3},
+  {name:'Питание',    sphere:'Питание',       win:14,  norm:1.5, w:2},
+  {name:'Здоровье',   sphere:'Здоровье',      win:72,  norm:3,   w:2},
+  {name:'Семья',      sphere:'Семья',         win:48,  norm:4,   w:2},
+  {name:'Духовность', sphere:'Духовность',    win:24,  norm:2,   w:2},
+  {name:'Яркость',    sphere:'Яркость жизни', win:48,  norm:4,   w:1},
+  {name:'Социум',     sphere:'Социум',        win:168, norm:4,   w:1},
+  {name:'Дом и быт',  sphere:'Дом быт',       win:168, norm:3,   w:1},
+  {name:'Обучение',   sphere:'Обучение',      win:168, norm:6,   w:2},
+];
+const SKILLS = [
+  {name:'Бизнес (общее)', type:'sphere', key:'Бизнес'},
+  {name:'Орг. служения',  type:'act',    key:'Организация служения'},
+  {name:'Разработка',     type:'act',    key:'Разработка'},
+  {name:'Тело',           type:'sphere', key:'Здоровье'},
+  {name:'Продажи/заявки', type:'act',    key:'Заявка'},
+  {name:'Монтаж',         type:'act',    key:'Монтаж'},
+  {name:'Планирование',   type:'sphere', key:'Планирование'},
+  {name:'Мриданга',       type:'act',    key:'Мриданга'},
+  {name:'Составление ТЗ', type:'act',    key:'Составление ТЗ на монтаж'},
+  {name:'Обучение',       type:'sphere', key:'Обучение'},
+];
+const BASE = 50, RATIO = 1.8, MAXLVL = 10;
+const FEARS = [
+  {name:'Хаос сверх нормы',     sphere:'Хаос',     limit:5,  dir:'max', pen:10},
+  {name:'Недосып',              sphere:'Сон',      limit:49, dir:'min', pen:10},
+  {name:'Обучение простаивает', sphere:'Обучение', limit:6,  dir:'min', pen:10},
+];
+const DEFAULT_WANTS = [
+  {id:'w1', text:'6 ч на Обучении за неделю', pts:25, done:false},
+  {id:'w2', text:'Хаос не больше 5 ч', pts:20, done:false},
+  {id:'w3', text:'Разговор с АЛ без телефона', pts:15, done:false},
+];
+const MAX_WANTS = 4;
+
+/* Группы сфер для ленты дня — 8 категориальных оттенков (проверены на фоне сцены) + нейтральный Сон */
+const ICONS = {
+  brief:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  people:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M15 14.5c3 0 6 2 6 5.5"/>',
+  heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  house:'<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>',
+  star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  book:'<path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/>',
+  flame:'<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>',
+  bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  dot:'<circle cx="12" cy="12" r="4"/>',
+};
+const GROUPS = [
+  {id:'biz',    name:'Бизнес',       color:'#3987e5', icon:'brief',  spheres:['Бизнес','Работа','Техническая','Финансы','Планирование']},
+  {id:'fam',    name:'Семья и люди', color:'#d95926', icon:'people', spheres:['Семья','Социум']},
+  {id:'hlt',    name:'Здоровье',     color:'#199e70', icon:'heart',  spheres:['Здоровье','Питание','Готовка']},
+  {id:'home',   name:'Быт и дорога', color:'#c98500', icon:'house',  spheres:['Дом быт','За рулем','Общ. транспорт']},
+  {id:'fun',    name:'Яркость',      color:'#d55181', icon:'star',   spheres:['Яркость жизни']},
+  {id:'learn',  name:'Обучение',     color:'#008300', icon:'book',   spheres:['Обучение','Развитие']},
+  {id:'spirit', name:'Духовность',   color:'#9085e9', icon:'flame',  spheres:['Духовность']},
+  {id:'chaos',  name:'Хаос',         color:'#e66767', icon:'bolt',   spheres:['Хаос']},
+  {id:'sleep',  name:'Сон',          color:'#355A7A', icon:'moon',   spheres:['Сон']},
+];
+const OTHER = {id:'other', name:'Прочее', color:'#4E6B82', icon:'dot', spheres:[]};
+const groupOf = (sphere) => GROUPS.find(g => g.spheres.includes(sphere)) || OTHER;
+
+/* ═══════════ Хранилище: сервер артефакта → браузер → память ═══════════
+   Записи лежат по дням (days/ГГГГ-ММ-ДД), чтобы не упереться в лимит документов. */
+const Store = (() => {
+  let mode = 'memory', db = null, lastError = '';
+  let entries = [], wants = DEFAULT_WANTS.map(w => ({...w})), dayDocs = {};
+  let chain = Promise.resolve();
+  const queue = (fn) => (chain = chain.then(fn).then(() => { lastError = ''; })
+    .catch((e) => { lastError = (e && e.code === 'quota_exceeded')
+      ? 'Хранилище заполнено — запись не сохранилась.' : 'Не удалось сохранить на сервере.'; paint(); }));
+  const LS = 'garmonizatsiya.v2';
+  const lsRead = () => { try { return JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { return null; } };
+  const lsWrite = () => { try { localStorage.setItem(LS, JSON.stringify({entries, wants})); return true; } catch (e) { return false; } };
+  const lsOk = () => { try { localStorage.setItem(LS + '.t', '1'); localStorage.removeItem(LS + '.t'); return true; } catch (e) { return false; } };
+  const key = (ts) => { const d = L(ts); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); };
+
+  async function init() {
+    try { db = (window.claude && window.claude.use) ? await window.claude.use('db') : null; } catch (e) { db = null; }
+    if (db) {
+      try {
+        const snap = await db.collection('days').get();
+        snap.docs.forEach(d => {
+          const items = ((d.data() || {}).items || []).map(x => ({...x}));
+          dayDocs[d.id] = items; entries.push(...items);
+        });
+        const w = await db.doc('state/wants').get();
+        const wb = w.exists ? (w.data() || {}) : {};
+        if (Array.isArray(wb.items)) wants = wb.items.map(x => ({...x}));
+        mode = 'db';
+      } catch (e) {
+        if (e && ['not_granted','capability_disabled','capability_removed'].includes(e.code)) db = null;
+        else mode = 'db';
+      }
+    }
+    if (!db) {
+      mode = lsOk() ? 'local' : 'memory';
+      const v = lsRead();
+      if (v) { entries = v.entries || []; if (Array.isArray(v.wants)) wants = v.wants; }
+    }
+    entries.sort((a, b) => a.t - b.t);
+  }
+  function add(e) {
+    entries.push(e); entries.sort((a, b) => a.t - b.t);
+    if (mode === 'db') {
+      const k = key(e.t); dayDocs[k] = (dayDocs[k] || []).concat([e]);
+      const body = {items: dayDocs[k].slice()};
+      queue(() => db.doc('days/' + k).set(body));
+    } else lsWrite();
+  }
+  function removeLast() {
+    const e = entries.pop(); if (!e) return null;
+    if (mode === 'db') {
+      const k = key(e.t); dayDocs[k] = (dayDocs[k] || []).filter(x => x.id !== e.id);
+      const items = dayDocs[k].slice();
+      queue(() => items.length ? db.doc('days/' + k).set({items}) : db.doc('days/' + k).delete());
+    } else lsWrite();
+    return e;
+  }
+  function saveWants() {
+    if (mode === 'db') { const items = wants.map(w => ({...w})); queue(() => db.doc('state/wants').set({items})); }
+    else lsWrite();
+  }
+  const label = () => lastError || ({db:'Записи хранятся на сервере и доступны с любого устройства.',
+                                      local:'Записи хранятся в этом браузере.',
+                                      memory:'Записи живут до перезагрузки страницы.'})[mode];
+  return {init, add, removeLast, saveWants, label,
+          entries: () => entries, wants: () => wants, setWants: (w) => { wants = w; }};
+})();
+
+/* ═══════════ Лента событий: закрытые записи + цепочка открытых ═══════════
+   Каждая новая запись открывает действие и закрывает предыдущее. */
+function lastStart() {
+  const mine = Store.entries();
+  if (mine.length) return mine[mine.length - 1].t;
+  return DATA.open ? DATA.open.t : (DATA.entries.length ? DATA.entries[DATA.entries.length - 1][0] : nowTs());
+}
+function buildTimeline(ref) {
+  const out = DATA.entries.map(([t, h, s, a]) => ({t, h, sphere: SN[s], act: AN[a], mine: false, live: false}));
+  const chain = [];
+  if (DATA.open) chain.push({t: DATA.open.t, act: DATA.open.act, sphere: DATA.open.sphere, mine: false, chain: true});
+  Store.entries().forEach(e => chain.push({t: e.t, act: e.act, sphere: e.sphere, mine: true, chain: true, id: e.id}));
+  chain.sort((a, b) => a.t - b.t);
+  chain.forEach((c, i) => {
+    const nx = chain[i + 1];
+    if (nx) { const h = Math.min(14, (nx.t - c.t) / H); if (h > 0) out.push({...c, h, live: false}); }
+    else out.push({...c, h: Math.max(0, Math.min(14, (ref - c.t) / H)), live: true});
+  });
+  return out.sort((a, b) => a.t - b.t);
+}
+const sumSphere = (list, sphere, from, to) => {
+  let s = 0; for (const e of list) if (e.sphere === sphere && e.t >= from && e.t < to) s += e.h; return s;
+};
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+function moodAt(T, list) {
+  let ws = 0, acc = 0;
+  const needs = NEEDS.map(n => {
+    const got = sumSphere(list, n.sphere, T - n.win * H, T + 60), pct = clamp01(got / n.norm);
+    ws += n.w; acc += n.w * pct; return {...n, got, pct};
+  });
+  const chaos = sumSphere(list, 'Хаос', T - 7 * DAY, T + 60);
+  const pen = Math.min(20, Math.round(chaos * 2));
+  return {value: Math.max(0, Math.round(acc / ws * 100) - pen), pen, chaos, needs};
+}
+const statusColor = (p) => p >= 70 ? 'var(--good)' : p >= 45 ? 'var(--warn)' : p >= 25 ? 'var(--serious)' : 'var(--crit)';
+const statusHex   = (p) => p >= 70 ? '#3FD66E' : p >= 45 ? '#F2C037' : p >= 25 ? '#EE8A4E' : '#E5484D';
+const moodWord = (v) => v >= 80 ? 'Отличное' : v >= 60 ? 'Нормальное' : v >= 40 ? 'Просело' : v >= 20 ? 'Плохое' : 'Кризис';
+
+function skillState(s, list) {
+  const baseH = s.type === 'sphere' ? (DATA.totalSphere[s.key] || 0) : (DATA.totalAct[s.key] || 0);
+  const extra = list.filter(e => e.chain)                         // часы, которых нет в накопленных итогах лога
+                    .reduce((a, e) => a + ((s.type === 'sphere' ? e.sphere : e.act) === s.key ? e.h : 0), 0);
+  const h = baseH + extra;
+  const lvl = h < BASE ? 0 : Math.min(MAXLVL, Math.floor(Math.log(h / BASE) / Math.log(RATIO)) + 1);
+  const cur = lvl === 0 ? 0 : BASE * Math.pow(RATIO, lvl - 1), nxt = BASE * Math.pow(RATIO, lvl);
+  const prog = lvl >= MAXLVL ? 1 : clamp01((h - cur) / (nxt - cur));
+  const rate = ((s.type === 'sphere' ? DATA.rate28Sphere[s.key] : DATA.rate28Act[s.key]) || 0) / 4;
+  const left = lvl >= MAXLVL ? 0 : nxt - h;
+  return {...s, h, lvl, prog, left, weeks: rate > 0 ? Math.max(1, Math.round(left / rate)) : null};
+}
+function weekOf(ref) {
+  const ds = dayStart(ref), dow = (L(ref).getUTCDay() + 6) % 7, start = ds - dow * DAY;
+  return {start, end: start + 7 * DAY, elapsed: clamp01((ref - start) / (7 * DAY))};
+}
+function fearsAt(ref, list) {
+  const w = weekOf(ref);
+  return FEARS.map(f => {
+    const got = sumSphere(list, f.sphere, w.start, w.end);
+    const target = f.dir === 'max' ? f.limit : f.limit * w.elapsed;
+    const fired = f.dir === 'max' ? got > f.limit : got < target;
+    return {...f, got, target, fired};
+  });
+}
+
+/* ═══════════ Состояние интерфейса ═══════════ */
+let speed = (nowTs() - lastStart() > 12 * H) ? 'snap' : 'now';
+let viewDay = null, editSlot = null, tab = 'needs';
+const refTime = () => speed === 'now' ? Math.max(nowTs(), lastStart()) : lastStart();
+
+/* ═══════════ Отрисовка ═══════════ */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const svgIcon = (name) => ICONS[name] || ICONS.dot;
+
+function paint() {
+  const ref = refTime(), list = buildTimeline(ref), m = moodAt(ref, list);
+  if (viewDay === null || viewDay > dayStart(ref)) viewDay = dayStart(ref);
+  renderTop(ref, list);
+  renderMood(ref, list);
+  renderDay(ref, list);
+  renderPortrait(m, ref, list);
+  renderWishes(ref, list);
+  renderNeeds(m);
+  renderSkills(list);
+  renderLog(list);
+}
+
+function renderTop(ref, list) {
+  const live = list.filter(e => e.live).pop();
+  const g = live ? groupOf(live.sphere) : OTHER;
+  $('nowBubble').style.setProperty('--c', g.color);
+  $('nowIcon').innerHTML = svgIcon(g.icon);
+  $('nowAct').textContent = live ? live.act : 'Нет открытого действия';
+  $('nowMeta').textContent = live
+    ? live.sphere + ' · с ' + hhmm(live.t) + (speed === 'now' ? ' · идёт ' + dur(live.h) : ' · на паузе')
+    : '—';
+  $('clockDay').textContent = wd(ref) + ' ' + ddmm(ref);
+  $('clockTime').textContent = hhmm(ref);
+  $('spSnap').setAttribute('aria-pressed', String(speed === 'snap'));
+  $('spNow').setAttribute('aria-pressed', String(speed === 'now'));
+}
+
+/* График настроения: одна серия, нейтральная линия, конечная точка цветом статуса */
+let moodPts = [];
+function renderMood(ref, list) {
+  const today = dayStart(ref);
+  moodPts = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = today - i * DAY, T = i === 0 ? ref : d + 21 * H;
+    moodPts.push({d, T, v: moodAt(T, list).value, today: i === 0});
+  }
+  const svg = $('moodSvg'), W = Math.max(300, $('moodBox').clientWidth), Hh = 190;
+  const pl = 30, pr = 36, pt = 10, pb = 24, iw = W - pl - pr, ih = Hh - pt - pb;
+  const x = (i) => pl + i * iw / (moodPts.length - 1), y = (v) => pt + ih - v / 100 * ih;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + Hh); svg.setAttribute('width', W);
+  let s = '';
+  [0, 20, 40, 60, 80, 100].forEach(v => {
+    s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' +
+         (v === 0 ? '#2B4E68' : '#1A3850') + '" stroke-width="1"/>' +
+         '<text x="' + (pl - 7) + '" y="' + (y(v) + 3.5) + '" text-anchor="end">' + v + '</text>';
+  });
+  moodPts.forEach((p, i) => {
+    if ((moodPts.length - 1 - i) % 2 === 0)
+      s += '<text x="' + x(i) + '" y="' + (Hh - 6) + '" text-anchor="middle">' + (p.today ? 'сегодня' : ddmm(p.d)) + '</text>';
+  });
+  const line = moodPts.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(p.v).toFixed(1)).join('');
+  s += '<path d="' + line + 'L' + x(moodPts.length - 1) + ',' + y(0) + 'L' + x(0) + ',' + y(0) + 'Z" fill="#DCEBF7" opacity=".08"/>';
+  s += '<path d="' + line + '" fill="none" stroke="#DCEBF7" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+  const last = moodPts[moodPts.length - 1], li = moodPts.length - 1;
+  s += '<circle cx="' + x(li) + '" cy="' + y(last.v) + '" r="5" fill="' + statusHex(last.v) + '" stroke="#0C2233" stroke-width="2"/>';
+  s += '<text x="' + (x(li) + 9) + '" y="' + (y(last.v) + 4) + '" style="fill:#E6F2FA;font-weight:700">' + last.v + '</text>';
+  s += '<line id="mCross" x1="0" x2="0" y1="' + pt + '" y2="' + (pt + ih) + '" stroke="#6F97B2" stroke-width="1" visibility="hidden"/>';
+  s += '<circle id="mDot" r="4" fill="#DCEBF7" stroke="#0C2233" stroke-width="2" visibility="hidden"/>';
+  s += '<rect x="' + pl + '" y="' + pt + '" width="' + iw + '" height="' + ih + '" fill="transparent" id="mHit"/>';
+  svg.innerHTML = s;
+  svg._geo = {x, y, pl, iw};
+  $('moodTable').innerHTML = '<tr><th>День</th><th>Настроение</th><th>Состояние</th></tr>' +
+    moodPts.slice().reverse().map(p => '<tr><td>' + (p.today ? 'сегодня' : wd(p.d) + ' ' + ddmm(p.d)) +
+      '</td><td>' + p.v + '</td><td>' + moodWord(p.v) + '</td></tr>').join('');
+}
+function moodHover(i) {
+  const svg = $('moodSvg'), g = svg._geo, tip = $('moodTip');
+  if (i === null || !g) { tip.hidden = true; ['mCross','mDot'].forEach(id => { const el = $(id); if (el) el.setAttribute('visibility','hidden'); }); return; }
+  const p = moodPts[i], cx = g.x(i), cy = g.y(p.v);
+  $('mCross').setAttribute('x1', cx); $('mCross').setAttribute('x2', cx); $('mCross').setAttribute('visibility', 'visible');
+  $('mDot').setAttribute('cx', cx); $('mDot').setAttribute('cy', cy); $('mDot').setAttribute('visibility', 'visible');
+  tip.innerHTML = '<b>' + p.v + '</b> · ' + moodWord(p.v) + '<br><span class="s">' +
+                  (p.today ? 'сегодня, ' + hhmm(p.T) : wd(p.d) + ' ' + ddmm(p.d) + ', 21:00') + '</span>';
+  tip.hidden = false;
+  const bw = $('moodBox').clientWidth, tw = tip.offsetWidth;
+  tip.style.left = Math.max(0, Math.min(bw - tw, cx - tw / 2)) + 'px';
+  tip.style.top = Math.max(0, cy - 52) + 'px';
+}
+let moodIdx = null;
+$('moodSvg').addEventListener('pointermove', (ev) => {
+  const g = $('moodSvg')._geo; if (!g) return;
+  const r = $('moodSvg').getBoundingClientRect(), px = ev.clientX - r.left;
+  moodIdx = Math.max(0, Math.min(moodPts.length - 1, Math.round((px - g.pl) / g.iw * (moodPts.length - 1))));
+  moodHover(moodIdx);
+});
+$('moodSvg').addEventListener('pointerleave', () => { moodIdx = null; moodHover(null); });
+$('moodSvg').addEventListener('keydown', (ev) => {
+  if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+  ev.preventDefault();
+  moodIdx = moodIdx === null ? moodPts.length - 1 : Math.max(0, Math.min(moodPts.length - 1, moodIdx + (ev.key === 'ArrowRight' ? 1 : -1)));
+  moodHover(moodIdx);
+});
+$('moodSvg').addEventListener('blur', () => { moodIdx = null; moodHover(null); });
+
+/* Лента дня: 24 часа, сегменты по группам сфер с зазором 2 px */
+let daySegs = [];
+function renderDay(ref, list) {
+  const D = viewDay, E = D + DAY;
+  daySegs = [];
+  list.forEach(e => {
+    const s = Math.max(e.t, D), en = Math.min(e.t + e.h * H, E);
+    if (en > s) daySegs.push({s, en, e, g: groupOf(e.sphere)});
+  });
+  const svg = $('daySvg'), W = Math.max(280, $('dayBox').clientWidth), Hh = 62, ty = 6, th = 28;
+  const x = (ts) => (ts - D) / DAY * W;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + Hh); svg.setAttribute('width', W);
+  let s = '<rect x="0" y="' + ty + '" width="' + W + '" height="' + th + '" rx="6" fill="#081B28"/>';
+  daySegs.forEach((sg, i) => {
+    const x0 = x(sg.s) + 1, w = Math.max(0, x(sg.en) - x(sg.s) - 2);
+    if (w <= 0) return;
+    s += '<rect data-i="' + i + '" x="' + x0.toFixed(1) + '" y="' + ty + '" width="' + w.toFixed(1) + '" height="' + th +
+         '" rx="' + Math.min(4, w / 2).toFixed(1) + '" fill="' + sg.g.color + '"/>';
+  });
+  [0, 6, 12, 18, 24].forEach(hh => {
+    const xx = Math.min(W - 1, Math.max(1, hh / 24 * W));
+    s += '<line x1="' + xx + '" x2="' + xx + '" y1="' + (ty + th + 2) + '" y2="' + (ty + th + 6) + '" stroke="#2B4E68"/>' +
+         '<text x="' + xx + '" y="' + (Hh - 4) + '" text-anchor="' + (hh === 0 ? 'start' : hh === 24 ? 'end' : 'middle') + '">' + pad(hh) + ':00</text>';
+  });
+  if (ref >= D && ref < E)
+    s += '<line x1="' + x(ref) + '" x2="' + x(ref) + '" y1="' + (ty - 4) + '" y2="' + (ty + th + 4) + '" stroke="#E6F2FA" stroke-width="2"/>';
+  svg.innerHTML = s;
+  svg._x = x; svg._W = W;
+  const today = dayStart(ref);
+  $('dayLabel').textContent = D === today ? 'сегодня, ' + ddmm(D) : wd(D) + ' ' + ddmm(D);
+  $('dayNext').disabled = D >= today;
+  $('dayPrev').disabled = D <= today - 30 * DAY;
+  const byG = {};
+  daySegs.forEach(sg => { byG[sg.g.id] = (byG[sg.g.id] || 0) + (sg.en - sg.s) / H; });
+  const groups = GROUPS.concat(byG.other ? [OTHER] : []);
+  $('dayLegend').innerHTML = groups.map(g => {
+    const h = byG[g.id] || 0;
+    return '<div class="lg' + (h ? '' : ' zero') + '"><i style="background:' + g.color + '"></i>' + esc(g.name) +
+           '<span class="h">' + (h ? f1(h) + ' ч' : '—') + '</span></div>';
+  }).join('');
+}
+function dayHover(ev) {
+  const svg = $('daySvg'), tip = $('dayTip'); if (!svg._x) return;
+  const r = svg.getBoundingClientRect(), px = ev.clientX - r.left;
+  const ts = viewDay + px / svg._W * DAY;
+  const sg = daySegs.find(z => ts >= z.s && ts < z.en);
+  if (!sg) { tip.hidden = true; return; }
+  const h = (sg.en - sg.s) / H;
+  tip.innerHTML = '<b>' + esc(sg.e.act) + '</b><br><span class="s">' + hhmm(sg.s) + '–' + hhmm(sg.en) +
+                  ' · ' + esc(sg.e.sphere) + ' · ' + f1(h) + ' ч' + (sg.e.live ? ' · идёт' : '') + '</span>';
+  tip.hidden = false;
+  const bw = $('dayBox').clientWidth, tw = tip.offsetWidth;
+  tip.style.left = Math.max(0, Math.min(bw - tw, px - tw / 2)) + 'px';
+  tip.style.top = '-46px';
+}
+$('daySvg').addEventListener('pointermove', dayHover);
+$('daySvg').addEventListener('pointerleave', () => { $('dayTip').hidden = true; });
+$('dayPrev').addEventListener('click', () => { viewDay -= DAY; paint(); });
+$('dayNext').addEventListener('click', () => { viewDay += DAY; paint(); });
+
+function renderPortrait(m, ref, list) {
+  const c = statusHex(m.value);
+  const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16);
+    const ch = (v) => Math.max(0, Math.min(255, Math.round(v * f)));
+    return 'rgb(' + ch((n >> 16) & 255) + ',' + ch((n >> 8) & 255) + ',' + ch(n & 255) + ')'; };
+  $('cL').setAttribute('fill', shade(c, 1.22)); $('cR').setAttribute('fill', c);
+  $('cBL').setAttribute('fill', shade(c, .6));  $('cBR').setAttribute('fill', shade(c, .8));
+  $('moodNum').textContent = m.value; $('moodNum').style.color = c;
+  $('moodWord').textContent = moodWord(m.value);
+  $('moodPen').textContent = m.pen ? '−' + m.pen + ' за Хаос (' + f1(m.chaos) + ' ч за 7 дней)' : 'Хаос в норме';
+  const sc = weekScore(ref, list);
+  const lo = -FEARS.reduce((a, f) => a + f.pen, 0), hi = Math.max(1, Store.wants().reduce((a, w) => a + w.pts, 0));
+  $('tubeFill').style.height = Math.round(clamp01((sc.total - lo) / (hi - lo)) * 100) + '%';
+  $('tubeVal').textContent = sgn(sc.total);
+  $('tubeVal').style.color = sc.total > 0 ? 'var(--gold)' : sc.total < 0 ? '#FF8A8D' : 'var(--ink)';
+}
+function weekScore(ref, list) {
+  const want = Store.wants().reduce((a, w) => a + (w.done ? w.pts : 0), 0);
+  const pen = fearsAt(ref, list).reduce((a, f) => a + (f.fired ? f.pen : 0), 0);
+  return {want, pen, total: want - pen};
+}
+
+function renderWishes(ref, list) {
+  const w = weekOf(ref), sc = weekScore(ref, list);
+  $('weekInfo').textContent = ddmm(w.start) + '–' + ddmm(w.end - DAY) + ' · очки ' + sgn(sc.total);
+  const ws = Store.wants();
+  let h = '';
+  for (let i = 0; i < MAX_WANTS; i++) {
+    const it = ws[i];
+    if (editSlot === i) {
+      h += '<div class="slot edit"><input id="wText" type="text" placeholder="Желание на неделю" maxlength="60">' +
+           '<div class="row"><select id="wPts" aria-label="Очки"><option>10</option><option selected>15</option><option>20</option><option>25</option></select>' +
+           '<button class="btn" id="wSave" type="button">OK</button></div></div>';
+    } else if (it) {
+      h += '<label class="slot want' + (it.done ? ' done' : '') + '">' +
+           '<button class="x" type="button" data-del="' + i + '" aria-label="Убрать желание">×</button>' +
+           '<span class="t">' + esc(it.text) + '</span>' +
+           '<span class="row"><input type="checkbox" id="want' + i + '" data-i="' + i + '"' + (it.done ? ' checked' : '') + '>' +
+           '<span class="p" style="color:var(--good)">+' + it.pts + '</span></span></label>';
+    } else {
+      h += '<button class="slot empty" type="button" data-new="' + i + '">+ желание</button>';
+      break;
+    }
+  }
+  $('wantSlots').innerHTML = h;
+  $('wantSlots').querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', (ev) => {
+    Store.wants()[+ev.target.dataset.i].done = ev.target.checked; Store.saveWants(); paint();
+  }));
+  $('wantSlots').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', (ev) => {
+    ev.preventDefault(); const i = +b.dataset.del;
+    Store.setWants(Store.wants().filter((_, j) => j !== i)); Store.saveWants(); paint();
+  }));
+  $('wantSlots').querySelectorAll('[data-new]').forEach(b => b.addEventListener('click', () => {
+    editSlot = +b.dataset.new; paint(); const t = $('wText'); if (t) t.focus();
+  }));
+  if (editSlot !== null && $('wSave')) {
+    const save = () => {
+      const t = $('wText').value.trim();
+      if (t) { Store.setWants(Store.wants().concat([{id: 'w' + Date.now(), text: t, pts: +$('wPts').value, done: false}])); Store.saveWants(); }
+      editSlot = null; paint();
+    };
+    $('wSave').addEventListener('click', save);
+    $('wText').addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { editSlot = null; paint(); } });
+  }
+  const fs = fearsAt(ref, list);
+  $('fearInfo').textContent = 'прошло ' + Math.round(w.elapsed * 100) + '% недели';
+  $('fearSlots').innerHTML = fs.map(f =>
+    '<div class="slot fear' + (f.fired ? ' fired' : '') + '"><span class="t">' + esc(f.name) + '</span>' +
+    '<span class="s">' + f1(f.got) + ' из ' + (f.dir === 'max' ? '≤ ' + f.limit : '≥ ' + f1(f.target)) + ' ч</span>' +
+    '<span class="row"><span class="s">' + (f.fired ? 'сработал' : 'не сработал') + '</span>' +
+    '<span class="p" style="color:' + (f.fired ? '#FF8A8D' : 'var(--ink-3)') + '">' + (f.fired ? '−' + f.pen : '0') + '</span></span></div>'
+  ).join('');
+}
+
+function renderNeeds(m) {
+  $('needsList').innerHTML = m.needs.map(n => {
+    const p = Math.round(n.pct * 100);
+    return '<div class="need' + (p < 25 ? ' crit' : '') + '"><div class="top"><span>' + esc(n.name) + '</span><span>' + p + '%</span></div>' +
+           '<div class="gbar"><i style="width:' + p + '%;background-color:' + statusColor(p) + '"></i></div></div>';
+  }).join('');
+  const crit = m.needs.filter(n => n.pct < 0.25).map(n => n.name);
+  $('needsFoot').textContent = crit.length ? 'Критично: ' + crit.join(', ') + '.' : 'Все шкалы выше критического уровня.';
+}
+function renderSkills(list) {
+  $('skillsList').innerHTML = SKILLS.map(s => {
+    const st = skillState(s, list);
+    let n = '';
+    for (let i = 0; i < MAXLVL; i++)
+      n += i < st.lvl ? '<span class="on"></span>'
+         : i === st.lvl ? '<span class="part" style="--p:' + Math.round(st.prog * 100) + '%"></span>' : '<span></span>';
+    const meta = Math.round(st.h) + ' ч · ' + (st.lvl >= MAXLVL ? 'максимум'
+      : 'до ' + (st.lvl + 1) + '-го ' + Math.round(st.left) + ' ч' + (st.weeks ? ' · ~' + st.weeks + ' нед' : ' · нет темпа'));
+    return '<div class="skill"><span class="n">' + esc(st.name) + '</span><span class="lv">' + st.lvl + '</span>' +
+           '<div class="notch">' + n + '</div><span class="m">' + meta + '</span></div>';
+  }).join('');
+}
+function renderLog(list) {
+  const rows = list.slice(-50).reverse();
+  $('logList').innerHTML = rows.map(e =>
+    '<div class="lr' + (e.live ? ' live' : '') + (e.mine ? ' mine' : '') + '"><i style="background:' + groupOf(e.sphere).color + '"></i>' +
+    '<span class="tm">' + wd(e.t) + ' ' + hhmm(e.t) + '</span>' +
+    '<span class="a">' + esc(e.act) + '<small>' + esc(e.sphere) + '</small></span>' +
+    '<span class="h">' + (e.live ? 'идёт' : f1(e.h)) + '</span></div>').join('');
+  $('storeNote').textContent = Store.label();
+  $('undo').disabled = !Store.entries().length;
+}
+
+/* ═══════════ Взаимодействие ═══════════ */
+['needs','skills','log'].forEach(t => $('t-' + t).addEventListener('click', () => {
+  tab = t;
+  ['needs','skills','log'].forEach(o => { $('t-' + o).setAttribute('aria-selected', String(o === t)); $('p-' + o).hidden = o !== t; });
+}));
+$('spSnap').addEventListener('click', () => { speed = 'snap'; viewDay = null; paint(); });
+$('spNow').addEventListener('click', () => { speed = 'now'; viewDay = null; paint(); });
+
+function setTimeNow() { const n = nowTs(); $('fTime').value = hhmm(n); }
+$('fAct').addEventListener('input', () => {
+  const s = DATA.actSphere[$('fAct').value.trim()];
+  if (s && [...$('fSphere').options].some(o => o.value === s)) $('fSphere').value = s;
+});
+$('fAdd').addEventListener('click', () => {
+  const act = $('fAct').value.trim(); $('formMsg').textContent = '';
+  if (!act) { $('formMsg').textContent = 'Напиши, что начинаешь.'; $('fAct').focus(); return; }
+  const n = nowTs(), d = L(n);
+  const [hh, mi] = ($('fTime').value || hhmm(n)).split(':').map(Number);
+  let t = mk(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hh, mi || 0);
+  if (t > n + 5 * 60) t -= DAY;                        // «23:50», записанное после полуночи
+  const prev = lastStart();
+  if (t <= prev) { $('formMsg').textContent = 'Время должно быть позже начала текущего действия (' + hhmm(prev) + ').'; return; }
+  Store.add({id: 'e' + t + Math.random().toString(36).slice(2, 6), t, act, sphere: $('fSphere').value});
+  $('fAct').value = ''; speed = 'now'; viewDay = null; setTimeNow(); paint();
+});
+$('fAct').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('fAdd').click(); });
+$('undo').addEventListener('click', () => { Store.removeLast(); viewDay = null; paint(); });
+
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(paint, 120); });
+setInterval(() => { if (speed === 'now' && document.visibilityState !== 'hidden') paint(); }, 30000);
+
+/* ═══════════ Старт ═══════════ */
+const allSpheres = [...new Set(SN.concat(Object.values(DATA.actSphere)))].sort((a, b) => a.localeCompare(b, 'ru'));
+$('fSphere').innerHTML = allSpheres.map(s => '<option>' + esc(s) + '</option>').join('');
+$('fSphere').value = 'Бизнес';
+$('actList').innerHTML = Object.keys(DATA.actSphere).map(a => '<option value="' + esc(a) + '">').join('');
+setTimeNow();
+paint();
+Store.init().then(() => { speed = (nowTs() - lastStart() > 12 * H) ? 'snap' : speed; viewDay = null; paint(); });
+</script>
