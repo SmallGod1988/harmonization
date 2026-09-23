@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Гармонизация</title>
+<style>
+  :root{--bg:#0C2233; --card:#12304a; --rim:#24506f; --ink:#DCEBF7; --ink-2:#9FBCD2; --ink-3:#6F97B2; --accent:#5EC8F0}
+  *{box-sizing:border-box}
+  body{margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+       font:16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding:16px}
+  main{max-width:480px; margin:0 auto; display:grid; gap:16px}
+  header{display:flex; justify-content:space-between; align-items:baseline}
+  h1{font-size:20px; margin:0}
+  .clock{color:var(--ink-2); font-variant-numeric:tabular-nums}
+  .card{background:var(--card); border:1px solid var(--rim); border-radius:14px; padding:16px}
+  .label{font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3)}
+  .act{font-size:22px; font-weight:600; margin:4px 0}
+  .meta{color:var(--ink-2); font-size:14px}
+  form{display:flex; gap:8px}
+  input{flex:1; min-width:0; font:inherit; color:var(--ink); background:#0a1c2a; border:1px solid var(--rim);
+        border-radius:10px; padding:10px 12px}
+  button{font:inherit; font-weight:600; color:#062232; background:var(--accent); border:0; border-radius:10px;
+         padding:10px 16px; cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Гармонизация</h1>
+    <span class="clock" id="clock">—</span>
+  </header>
+
+  <section class="card">
+    <div class="label">Сейчас</div>
+    <div class="act" id="nowAct">Ничего не записано</div>
+    <div class="meta" id="nowMeta">Напишите ниже, чем заняты.</div>
+  </section>
+
+  <form id="form">
+    <input id="act" type="text" placeholder="Что начинаю?" autocomplete="off" aria-label="Что начинаю">
+    <button type="submit">Начать</button>
+  </form>
+</main>
+
+<script>
+/* Время — московское, UTC+3 без перехода на летнее: считаем через смещение, а не через пояс браузера. */
+const H = 3600, OFF = 3 * H;
+const pad = (n) => String(n).padStart(2, '0');
+const nowTs = () => Math.floor(Date.now() / 1000);
+const msk = (ts) => new Date((ts + OFF) * 1000);
+const hhmm = (ts) => { const d = msk(ts); return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()); };
+const dur = (sec) => { const m = Math.floor(sec / 60); return m < 60 ? m + ' мин' : Math.floor(m / 60) + ' ч ' + (m % 60) + ' мин'; };
+
+/* Журнал — цепочка начал: каждая запись открывает действие и закрывает предыдущее.
+   Пока показываем только последнее, но храним все — пригодится на следующих шагах. */
+const KEY = 'harmonization.web.v1';
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } };
+const save = (list) => { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {} };
+let entries = load();
+
+const $ = (id) => document.getElementById(id);
+
+function render() {
+  const now = nowTs();
+  $('clock').textContent = hhmm(now) + ' МСК';
+  const cur = entries[entries.length - 1];
+  if (!cur) return;
+  $('nowAct').textContent = cur.act;
+  $('nowMeta').textContent = 'с ' + hhmm(cur.t) + ' · идёт ' + dur(now - cur.t);
+}
+
+$('form').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const act = $('act').value.trim();
+  if (!act) { $('act').focus(); return; }
+  entries.push({t: nowTs(), act});
+  save(entries);
+  $('act').value = '';
+  render();
+});
+
+render();
+setInterval(render, 30000);
+</script>
+</body>
+</html>
